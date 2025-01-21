@@ -4,5 +4,18 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"python.autoComplete.extraPaths": [
+			"/lib",
+			"../meta/lib"
+		],
+		"python.analysis.extraPaths": [
+			"/lib",
+			"../meta/lib"
+		],
+		"files.associations": {
+			"*.conf": "bitbake",
+			"*.inc": "bitbake"
+		}
+	}
 }

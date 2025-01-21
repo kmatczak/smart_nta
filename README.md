@@ -4,7 +4,9 @@ Krzysztof Matczak <krzysztof.matczak@tietoevry.com>
 
 
 # HOWTO build standalone
-cd standalone 
-mkdir build && cd build 
-cmake ../ 
-make 
+cd standalone\
+mkdir build && cd build\
+cmake ../\
+make
+
+
