@@ -4,7 +4,7 @@ project(smart_network_traffic_analyzer)
 # Set the C standard
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-#set(CMAKE_INSTALL_PREFIX "out")
+set(CMAKE_INSTALL_PREFIX "install")
 
 # Add subdirectories
 #add_subdirectory(lib)
