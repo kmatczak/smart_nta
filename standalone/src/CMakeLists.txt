@@ -1,2 +1,3 @@
-add_executable(smart_nta smart_nta.c)
+add_executable(smart_nta smart_nta.c pkt_capture_ops.c)
+target_link_libraries(smart_nta PRIVATE pcap)
 install(TARGETS smart_nta DESTINATION bin)
