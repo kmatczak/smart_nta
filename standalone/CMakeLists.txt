@@ -11,4 +11,4 @@ set(CMAKE_INSTALL_PREFIX "install")
 add_subdirectory(src)
 
 # Installation rules
-#install(DIRECTORY lib/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY include/ DESTINATION include FILES_MATCHING PATTERN "*.h")
