@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "pkt_capture_ops.h"
+#include "hl_api.h"
 
 typedef struct thread_data
 {
@@ -13,7 +14,9 @@ typedef struct thread_data
    unsigned int sampling_window;
    unsigned int interval;
    volatile int stop_flag; // Flag to control the loop
-   pthread_mutex_t lock;   // Mutex to protect the stop_flag
+   pkt_capture_cb_t cb;
+   pthread_mutex_t lock; // Mutex to protect the stop_flag
+   pcap_t *handle;
 
 } thread_data_t;
 
@@ -61,14 +64,14 @@ static void _packet_handler(u_char *dumpfile, const struct pcap_pkthdr *pkthdr, 
 {
    printf("Packet captured. Timestamp[s]:%ld length:%d\n", pkthdr->ts.tv_sec, pkthdr->len);
    pcap_dump(dumpfile, pkthdr, packet);
-   // pcap_breakloop((pcap_t *)user);
 }
 
-static int _capture_pkts(char *if_name, unsigned int sampling_window)
+static void *_capt_thread(void *arg)
 {
+   thread_data_t *data = (thread_data_t *)arg;
    char errbuf[PCAP_ERRBUF_SIZE];
    char if_found[10] = "";
-   pcap_t *handle;
+   // pcap_t *handle;
    struct pcap_pkthdr header;
    pcap_dumper_t *dumpfile;
    char filename[40];
@@ -81,29 +84,38 @@ static int _capture_pkts(char *if_name, unsigned int sampling_window)
 
    printf("%s:%d\n", __func__, __LINE__);
 
-   ret = _find_matching_devs(if_name, if_found);
+   ret = _find_matching_devs(data->if_name, if_found);
    if (ret != 0)
    {
-      fprintf(stderr, "Error finding matching device for %s\n", if_name);
-      return ret;
+      fprintf(stderr, "Error finding matching device for %s\n", data->if_name);
+      if (data->cb)
+      {
+         data->cb("Error finding matching device", CAPT_ERROR);
+      }
+      return NULL;
    }
 
    printf("Device: %s\n", if_found);
 
-   // TODO: add real implementation of the sampling time window, as the curent meaning is not correct.
-   // The pcap_open_live() function interprets it as the packet buffer timeout...
-   handle = pcap_open_live(if_found, BUFSIZ, 1, sampling_window, errbuf);
-   if (handle == NULL)
+   data->handle = pcap_open_live(data->if_name, BUFSIZ, 1, 1000, errbuf);
+   if (data->handle == NULL)
    {
-      fprintf(stderr, "Could not open device %s: %s\n", if_found, errbuf);
-      return -ENODEV;
+      fprintf(stderr, "Could not open device %s: %s\n", data->if_name, errbuf);
+      if (data->cb)
+      {
+         data->cb("Error opening device", CAPT_ERROR);
+      }
+      return NULL;
    }
 
-   // printf("type of link layer: %d\n", pcap_datalink(handle));
-   if (pcap_datalink(handle) != DLT_EN10MB)
+   if (pcap_datalink(data->handle) != DLT_EN10MB)
    {
-      fprintf(stderr, "Device %s doesn't provide Ethernet headers - not supported\n", if_found);
-      return -ENODEV;
+      fprintf(stderr, "Device %s doesn't provide Ethernet headers - not supported\n", data->if_name);
+      if (data->cb)
+      {
+         data->cb("Error opening device", CAPT_ERROR);
+      }
+      return NULL;
    }
 
    /* Get unique file name with timestamp */
@@ -113,50 +125,67 @@ static int _capture_pkts(char *if_name, unsigned int sampling_window)
    snprintf(filename, sizeof(filename), "%s_%s.pcap", if_found, timestamp);
 
    printf("Dumping packets to file: %s\n", filename);
-   dumpfile = pcap_dump_open(handle, filename);
+   dumpfile = pcap_dump_open(data->handle, filename);
    if (dumpfile == NULL)
    {
-      fprintf(stderr, "Error opening dump file: %s\n", pcap_geterr(handle));
-      ret = -1;
-      goto exit;
+      fprintf(stderr, "Error opening dump file: %s\n", pcap_geterr(data->handle));
+      pcap_close(data->handle);
+      if (data->cb)
+      {
+         data->cb("Error opening dump file", CAPT_ERROR);
+      }
+      return NULL;
    }
 
-   if (pcap_dispatch(handle, 0, _packet_handler, (u_char *)dumpfile) < 0)
+   ret = pcap_loop(data->handle, -1, _packet_handler, (u_char *)dumpfile);
+   if (ret < 0)
    {
-      fprintf(stderr, "Error occurred while capturing packets: %s\n", pcap_geterr(handle));
-      ;
-      ret = -1;
+      if (ret == PCAP_ERROR_BREAK)
+         printf("pcap_breakloop() called\n");
+      else
+         fprintf(stderr, "Error occurred while capturing packets: %s ret:%d \n", pcap_geterr(data->handle), ret);
    }
 
-exit:
+   printf("%s:%d\n", __func__, __LINE__);
+
    pcap_dump_close(dumpfile);
-   pcap_close(handle);
-   return ret;
+   pcap_close(data->handle);
+
+   if (data->cb)
+   {
+      data->cb(filename, CAPT_DONE);
+   }
+
+   return NULL;
 }
 
-static void *_thread_func(void *arg)
+static void *_capt_controller_thread(void *arg)
 {
    thread_data_t *data = (thread_data_t *)arg;
-   printf("Thread function: %s %d\n", data->if_name, data->sampling_window);
+   pthread_t capture_thread;
+
+   printf("Starting packet capturing on %s with sampling window %d[ms] and interval: %d[ms] \n", data->if_name, data->sampling_window, data->interval);
 
    while (1)
    {
-      pthread_mutex_lock(&data->lock);
+      pthread_create(&capture_thread, NULL, _capt_thread, (void *)data);
+      /* Capture packets during the sampling window */
+      usleep(data->sampling_window * 1000);
+      pcap_breakloop(data->handle);
+      pthread_join(capture_thread, NULL);
       if (data->stop_flag)
       {
-         pthread_mutex_unlock(&data->lock);
          break;
       }
-      pthread_mutex_unlock(&data->lock);
-      _capture_pkts(data->if_name, data->sampling_window);
-      usleep(data->interval * 1000);
+      /* Sleep for interval */
+      usleep((data->interval - data->sampling_window) * 1000);
    }
 
    printf("Thread exiting...\n");
    return NULL;
 }
 
-void impl_start_traffic_classification(char *if_name, unsigned int sampling_window, unsigned int interval)
+void impl_start_traffic_classification(char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb)
 {
    pthread_t thread;
 
@@ -181,10 +210,11 @@ void impl_start_traffic_classification(char *if_name, unsigned int sampling_wind
    data.sampling_window = sampling_window;
    data.interval = interval;
    data.stop_flag = 0;
+   data.cb = cb;
+
    pthread_mutex_init(&data.lock, NULL);
-   pthread_create(&thread, NULL, (void *)_thread_func, (void *)&data);
+   pthread_create(&thread, NULL, (void *)_capt_controller_thread, (void *)&data);
    pthread_join(thread, NULL);
-   // pthread_detach(thread);
 }
 
 void impl_stop_traffic_classification()
@@ -193,6 +223,7 @@ void impl_stop_traffic_classification()
 
    pthread_mutex_lock(&data.lock);
    data.stop_flag = 1;
+   pcap_breakloop(data.handle);
    pthread_mutex_unlock(&data.lock);
    pthread_mutex_destroy(&data.lock);
 }

@@ -1,5 +1,6 @@
 #ifndef PKT_CAPTURE_OPS_H
 #define PKT_CAPTURE_OPS_H
+#include "hl_api.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +13,7 @@ extern "C" {
  * @param sampling_window The sampling window size.
  * @param interval The interval between samples.
  */
-void impl_start_traffic_classification(char *if_name, unsigned int sampling_window, unsigned int interval);
+void impl_start_traffic_classification(char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb);
 
 /**
  * @brief Stop traffic classification.

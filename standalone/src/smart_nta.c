@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include "pkt_capture_ops.h"
+
 #include <stdlib.h>
 #include "hl_api.h"
 #include <signal.h>
 
-static traffic_classifier tc;
+static traffic_classifier_t tc;
 
-int register_hl_api(traffic_classifier *tc)
+int register_hl_api(traffic_classifier_t *tc)
 {
     // Register high-level API
     tc->start_traffic_classification = impl_start_traffic_classification;
@@ -20,18 +21,31 @@ void handle_signal(int signal)
     // Stop traffic classification. In the final implementation, this will be called from the management
     // interface or a control plane application using TR-181 data model.
     tc.stop_traffic_classification();
-    //exit(0);
+    // exit(0);
+}
+
+void pkt_capt_cb_impl(const char *file_name, const pkt_capt_status_t st)
+{
+    printf("Callback function called with file name: %s and status:%d\n", file_name, st);
 }
 
 int main(int argc, char *argv[])
 {
     // Initialize variables
     int ret = 0;
-    int sampling_window = 1000;
-    int interval = 20000;
+    /* Sampling time window [ms] must be smaller than interval. */
+    int sampling_window = 5000;
+     /* Interval between samples [ms] */
+    int interval = 10000;
     struct sigaction sa;
+    
+    if (argc > 1) {
+        sampling_window = atoi(argv[1]);
+    }
 
-    // Parse command-line arguments
+    if (argc > 2) {
+        interval = atoi(argv[2]);
+    }
 
     // Main program logic
     printf("Hello, this is Smart Network traffic Analyzer !\n");
@@ -56,7 +70,7 @@ int main(int argc, char *argv[])
 
     // Start traffic classification. In the final implementation, this will be called from the management
     // interface or a control plane application using TR-181 data model.
-    tc.start_traffic_classification("eth0", sampling_window, interval);
+    tc.start_traffic_classification("eth0", sampling_window, interval, pkt_capt_cb_impl);
 
     return ret;
 }
