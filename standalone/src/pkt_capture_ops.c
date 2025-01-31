@@ -11,6 +11,7 @@
 typedef struct thread_data
 {
    const char *if_name;
+   const char *capture_dir;
    unsigned int sampling_window;
    unsigned int interval;
    volatile int stop_flag; // Flag to control the loop
@@ -71,10 +72,9 @@ static void *_capt_thread(void *arg)
    thread_data_t *data = (thread_data_t *)arg;
    char errbuf[PCAP_ERRBUF_SIZE];
    char if_found[10] = "";
-   // pcap_t *handle;
    struct pcap_pkthdr header;
    pcap_dumper_t *dumpfile;
-   char filename[40];
+   char filename[512];
    char timestamp[20];
    time_t rawtime;
    struct tm *timeinfo;
@@ -122,7 +122,7 @@ static void *_capt_thread(void *arg)
    time(&rawtime);
    timeinfo = localtime(&rawtime);
    strftime(timestamp, sizeof(timestamp), "%Y%m%d%H%M%S", timeinfo);
-   snprintf(filename, sizeof(filename), "%s_%s.pcap", if_found, timestamp);
+   snprintf(filename, sizeof(filename), "%s/%s_%s.pcap",data->capture_dir, if_found, timestamp);
 
    printf("Dumping packets to file: %s\n", filename);
    dumpfile = pcap_dump_open(data->handle, filename);
@@ -185,7 +185,7 @@ static void *_capt_controller_thread(void *arg)
    return NULL;
 }
 
-void impl_start_traffic_classification(const char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb)
+void impl_start_traffic_classification(const char *if_name, unsigned int sampling_window, unsigned int interval,  const char *capture_dir, pkt_capture_cb_t cb)
 {
    pthread_t thread;
 
@@ -207,6 +207,7 @@ void impl_start_traffic_classification(const char *if_name, unsigned int samplin
       printf("Capturing from interface: %s\n", if_name);
 
    data.if_name = if_name;
+   data.capture_dir = capture_dir;
    data.sampling_window = sampling_window;
    data.interval = interval;
    data.stop_flag = 0;

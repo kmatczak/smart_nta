@@ -1,3 +1,4 @@
 standalone/.vscode/*
 standalone/build/*
-standalone/*.pcap
+**/*.pcap
+

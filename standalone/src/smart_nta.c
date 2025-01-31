@@ -39,6 +39,9 @@ int main(int argc, char *argv[])
     int interval = 10000;
     /* Network interface name */
     const char *interface_name = "eth0";
+    /* Directory for capture files */
+    const char *capture_dir = "/tmp/pkt_capture";
+
     struct sigaction sa;
     
     /* Parse command line arguments */
@@ -52,6 +55,10 @@ int main(int argc, char *argv[])
 
     if (argc > 3) {
         interface_name = argv[3];
+    }
+
+    if (argc > 4) {
+        capture_dir = argv[4];
     }
 
     // Main program logic
@@ -78,7 +85,7 @@ int main(int argc, char *argv[])
     // Start traffic classification. In the final implementation, this will be called from the management
     // interface or a control plane application using TR-181 data model.
 
-    tc.start_traffic_classification(interface_name, sampling_window, interval, pkt_capt_cb_impl);
+    tc.start_traffic_classification(interface_name, sampling_window, interval, capture_dir, pkt_capt_cb_impl);
 
     return ret;
 }

@@ -13,7 +13,7 @@ extern "C" {
  * @param sampling_window The sampling window size.
  * @param interval The interval between samples.
  */
-void impl_start_traffic_classification(const char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb);
+void impl_start_traffic_classification(const char *if_name, unsigned int sampling_window, unsigned int interval, const char *capture_dir, pkt_capture_cb_t cb);
 
 /**
  * @brief Stop traffic classification.
