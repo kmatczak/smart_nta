@@ -40,7 +40,7 @@ typedef struct
      * @param sampling_window The sampling window size [ms].
      * @param interval The interval between samples [ms].
      */
-    void (*start_traffic_classification)(char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb);
+    void (*start_traffic_classification)(const char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb);
 
     /**
      * @brief Stop traffic classification.

@@ -10,7 +10,7 @@
 
 typedef struct thread_data
 {
-   char *if_name;
+   const char *if_name;
    unsigned int sampling_window;
    unsigned int interval;
    volatile int stop_flag; // Flag to control the loop
@@ -22,7 +22,7 @@ typedef struct thread_data
 
 static thread_data_t data;
 
-static int _find_matching_devs(char *if_name, char *if_found)
+static int _find_matching_devs(const char *if_name, char *if_found)
 {
    char errbuf[PCAP_ERRBUF_SIZE];
    pcap_if_t *interface_list;
@@ -185,7 +185,7 @@ static void *_capt_controller_thread(void *arg)
    return NULL;
 }
 
-void impl_start_traffic_classification(char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb)
+void impl_start_traffic_classification(const char *if_name, unsigned int sampling_window, unsigned int interval, pkt_capture_cb_t cb)
 {
    pthread_t thread;
 

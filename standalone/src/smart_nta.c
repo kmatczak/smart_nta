@@ -37,14 +37,21 @@ int main(int argc, char *argv[])
     int sampling_window = 5000;
      /* Interval between samples [ms] */
     int interval = 10000;
+    /* Network interface name */
+    const char *interface_name = "eth0";
     struct sigaction sa;
     
+    /* Parse command line arguments */
     if (argc > 1) {
         sampling_window = atoi(argv[1]);
     }
 
     if (argc > 2) {
         interval = atoi(argv[2]);
+    }
+
+    if (argc > 3) {
+        interface_name = argv[3];
     }
 
     // Main program logic
@@ -70,7 +77,8 @@ int main(int argc, char *argv[])
 
     // Start traffic classification. In the final implementation, this will be called from the management
     // interface or a control plane application using TR-181 data model.
-    tc.start_traffic_classification("eth0", sampling_window, interval, pkt_capt_cb_impl);
+
+    tc.start_traffic_classification(interface_name, sampling_window, interval, pkt_capt_cb_impl);
 
     return ret;
 }
