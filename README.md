@@ -16,3 +16,8 @@ In both cases the same key directory structure should be produced:
     │   └── install
     └── src
 ```
+## Running packet capture 
+Example with 1s sampling window and 5s probing interval:
+```bash
+sudo ./build/src/smart_nta 1000 5000
+```
